@@ -19,3 +19,5 @@ jobs:
           curl -fsS -X POST "${WORKER_URL}/api/internal/cron" \
             -H "x-cron-secret: ${CRON_SECRET}" \
             -H "Content-Type: application/json" -d '{}'
+
+# メンテナンス: ワークフロー再登録用タッチ
