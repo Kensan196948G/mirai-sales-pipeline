@@ -108,7 +108,7 @@ curl -s https://mirai-sales-pipeline.kensan1969.workers.dev/api/internal/healthz
 | JOB-05 | 予測スナップショット自動確定（前月締め、月初1日） | 日次 cron |
 | JOB-06 | データ品質レポート | 日次 cron |
 
-Worker の cron トリガー（`30 0 * * *` = 09:30 JST）に加え、GitHub Actions（`.github/workflows/daily-jobs.yml`）が安全網として `/api/internal/cron` を実行します。
+日次ジョブは **GitHub Actions**（`.github/workflows/daily-jobs.yml`）が毎日 09:30 JST に `/api/internal/cron`（`x-cron-secret` 認証）を実行します。本アカウントは Workers 無料プランの cron 上限（5件/アカウント）のため Worker cron は未設定ですが、ダッシュボードアクセス時の遅延実行（24時間以上未実行なら起動）も多重保険として機能します。Workers Paid へのアップグレード後は `wrangler.toml` の `[triggers]` で cron を追加できます。
 
 ## 運用・監視・バックアップ
 

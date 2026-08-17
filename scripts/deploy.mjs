@@ -134,13 +134,15 @@ if (withSecrets) {
 }
 
 // ---- 5. cron トリガー（--crons 時のみ）----
+// 注意: Workers 無料プランは cron 上限 5 件/アカウント。上限到達時は API が 10072 を返す。
+// 日次ジョブは GitHub Actions（daily-jobs.yml）と dashboard の遅延実行で代替される。
 if (withCrons) {
-  const crons = ['30 0 * * *']; // 毎日 00:30 UTC = 09:30 JST
+  const crons = [{ cron: '30 0 * * *' }]; // 毎日 00:30 UTC = 09:30 JST
   await cf(`/accounts/${ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/schedules`, {
     method: 'PUT',
-    body: JSON.stringify({ crons }),
+    body: JSON.stringify(crons),
   });
-  console.log(`cron triggers: ${crons.join(', ')}`);
+  console.log(`cron triggers: ${crons.map((c) => c.cron).join(', ')}`);
 }
 
 console.log('デプロイ完了。稼働確認:');
