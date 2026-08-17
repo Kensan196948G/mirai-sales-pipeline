@@ -100,9 +100,14 @@ if (dryRun) {
 }
 
 // ---- 3. スクリプトアップロード（multipart）----
+// 形式: 公式ドキュメント（multipart-upload-metadata）に準拠。
+//   - metadata パート: Content-Type: application/json
+//   - モジュール パート: filename 付き・Content-Type: application/javascript+module
 const boundary = `----msp${Date.now()}`;
 const metaPart = `--${boundary}\r\nContent-Disposition: form-data; name="metadata"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n`;
-const modulePart = `--${boundary}\r\nContent-Disposition: form-data; name="worker.mjs"\r\nContent-Type: application/javascript\r\n\r\n${bundle}\r\n--${boundary}--\r\n`;
+const modulePart =
+  `--${boundary}\r\nContent-Disposition: form-data; name="worker.mjs"; filename="worker.mjs"\r\n` +
+  `Content-Type: application/javascript+module\r\n\r\n${bundle}\r\n--${boundary}--\r\n`;
 const body = metaPart + modulePart;
 
 console.log(`> PUT /accounts/${ACCOUNT_ID}/workers/scripts/${WORKER_NAME}`);
