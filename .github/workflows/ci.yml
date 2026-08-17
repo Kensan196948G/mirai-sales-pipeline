@@ -17,14 +17,14 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Worker build（生成物 src/generated/assets.ts を生成）
+        run: npm run build:worker
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
         run: npm run test:unit
       - name: Frontend build
         run: npm run build:web
-      - name: Worker build
-        run: npm run build:worker
 
   integration:
     runs-on: ubuntu-latest
