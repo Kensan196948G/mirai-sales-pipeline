@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="mirai-sales-pipeline 詳細仕様設計書">
+<title>営業パイプライン・受注予測管理 詳細仕様設計書</title>
+<style>
+:root{
+  color-scheme:light;
+  --ink:#172033;--muted:#5d6878;--line:#d8dee9;--panel:#f6f8fb;
+  --accent:#075985;--accent2:#0e7490;--head:#0f3d56;--soft:#e0f2fe;
+  --ok:#166534;--okbg:#f0fdf4;--warn:#92400e;--warnbg:#fffbeb;
+  --danger:#991b1b;--dangerbg:#fef2f2;--violet:#5b21b6;--violetbg:#f5f3ff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#eef2f6;color:var(--ink);font-family:"Yu Gothic UI","Yu Gothic","Meiryo",system-ui,sans-serif;line-height:1.75}
+.page{width:min(1480px,calc(100% - 32px));margin:24px auto 56px;padding:clamp(24px,4vw,56px);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 34px rgba(15,61,86,.08)}
+.hero{padding:22px 24px;border-radius:14px;background:linear-gradient(135deg,#0f3d56,#075985 58%,#0e7490);color:#fff;margin-bottom:24px}
+.hero .eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.08em;opacity:.85}
+.hero h1{margin:.35rem 0 .45rem;font-size:clamp(1.7rem,3.4vw,2.55rem);line-height:1.25}
+.hero p{margin:0;max-width:110ch;opacity:.92}
+.docmeta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 26px}
+.meta{padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.meta b{display:block;color:var(--head);font-size:.78rem;margin-bottom:2px}
+nav.toc{margin:20px 0 32px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+nav.toc strong{color:var(--head)}
+nav.toc ol{columns:2;column-gap:32px;margin:.6rem 0 0;padding-left:1.35rem}
+nav.toc a{color:var(--accent);text-decoration:none}
+h2{margin-top:2.2em;color:var(--head);padding-left:12px;border-left:5px solid var(--accent);font-size:1.45rem}
+h3{margin-top:1.7em;color:var(--head);font-size:1.12rem}
+h4{margin-top:1.3em;color:var(--accent)}
+p,li{max-width:110ch}
+code{font-family:Consolas,"SFMono-Regular",monospace;background:#eef2f6;padding:.12em .35em;border-radius:4px}
+.badge{display:inline-block;padding:.12rem .55rem;border-radius:999px;font-size:.76rem;font-weight:800;border:1px solid}
+.b-core{background:var(--soft);color:#075985;border-color:#7dd3fc}
+.b-source{background:var(--okbg);color:var(--ok);border-color:#86efac}
+.b-design{background:var(--violetbg);color:var(--violet);border-color:#c4b5fd}
+.b-tbd{background:var(--warnbg);color:var(--warn);border-color:#fcd34d}
+.note,.warning,.design-note{padding:13px 16px;border-radius:10px;margin:14px 0}
+.note{background:var(--okbg);border-left:4px solid #16a34a}
+.warning{background:var(--warnbg);border-left:4px solid #f59e0b}
+.design-note{background:var(--violetbg);border-left:4px solid #8b5cf6}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:14px 0 26px}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:.92rem}
+table.wide{min-width:1120px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+th:last-child,td:last-child{border-right:0}
+tr:last-child td{border-bottom:0}
+thead th{background:var(--head);color:#fff;white-space:nowrap}
+tbody tr:nth-child(even){background:#f9fbfd}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+.kpi{padding:14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.kpi b{display:block;font-size:.78rem;color:var(--muted)}
+.kpi span{font-size:1.05rem;font-weight:900;color:var(--head)}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:16px 0 24px}
+.flow .step{flex:1 1 140px;min-width:140px;padding:12px;border:1px solid #bae6fd;background:#f0f9ff;border-radius:10px;font-weight:800;color:#0c4a6e;text-align:center}
+.flow .arrow{display:flex;align-items:center;font-weight:900;color:#64748b}
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:center;margin:18px 0}
+.arch .box{min-height:104px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.arch .box strong{display:block;color:var(--head);margin-bottom:5px}
+.arch .arr{font-size:1.6rem;color:var(--accent);font-weight:900;text-align:center}
+.schema{font-family:Consolas,"SFMono-Regular",monospace;white-space:pre-wrap;padding:16px;border-radius:10px;background:#0f172a;color:#e2e8f0;overflow:auto;line-height:1.55}
+.footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);font-size:.84rem;color:var(--muted)}
+@media(max-width:900px){
+  .docmeta,.kpi-grid{grid-template-columns:1fr 1fr}
+  .arch{grid-template-columns:1fr}
+  .arch .arr{transform:rotate(90deg)}
+}
+@media(max-width:680px){
+  .page{width:100%;margin:0;padding:18px 13px 36px;border:0;border-radius:0}
+  .docmeta,.kpi-grid{grid-template-columns:1fr}
+  nav.toc ol{columns:1}
+  .flow .arrow{display:none}
+  table{font-size:.86rem}
+}
+@media print{
+  body{background:#fff}
+  .page{width:100%;margin:0;padding:0;border:0;box-shadow:none}
+  nav.toc{break-after:page}
+  .table-wrap{overflow:visible}
+  thead{display:table-header-group}
+  tr{break-inside:avoid}
+  h2,h3{break-after:avoid}
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<section class="hero">
+  <div class="eyebrow">MIRAI SALES / DETAILED DESIGN SPECIFICATION</div>
+  <h1>営業パイプライン・受注予測管理<br>詳細仕様設計書</h1>
+  <p>Sales Pipeline &amp; Order Forecast Management / Repository candidate: <code>mirai-sales-pipeline</code></p>
+</section>
+
+<div class="docmeta">
+  <div class="meta"><b>文書版</b>v1.0 Draft</div>
+  <div class="meta"><b>作成日</b>2026-08-16</div>
+  <div class="meta"><b>前提</b>要件定義書 v1.0 Draft</div>
+  <div class="meta"><b>設計思想</b>AppSuite中心・既存基盤優先</div>
+</div>
+
+<div class="design-note">
+  本書は、資料根拠を壊さずに実装可能な粒度へ具体化した<strong>詳細設計案</strong>である。
+  AppSuite/desknet's NEOの実環境で利用可能なAPI・ワークフロー・通知機能の詳細は環境確認後に確定する。
+</div>
+
+<nav class="toc">
+<strong>目次</strong>
+<ol>
+<li><a href="#arch">システム構成</a></li>
+<li><a href="#components">コンポーネント責務</a></li>
+<li><a href="#apps">AppSuiteアプリ構成</a></li>
+<li><a href="#model">データモデル</a></li>
+<li><a href="#dict">主要データ項目定義</a></li>
+<li><a href="#state">案件状態・確度設計</a></li>
+<li><a href="#calc">集計・計算仕様</a></li>
+<li><a href="#screen">画面仕様</a></li>
+<li><a href="#validation">入力検証</a></li>
+<li><a href="#duplicate">重複・停滞検知</a></li>
+<li><a href="#notify">通知仕様</a></li>
+<li><a href="#docs">文書管理仕様</a></li>
+<li><a href="#if">外部連携仕様</a></li>
+<li><a href="#auth">権限・セキュリティ</a></li>
+<li><a href="#audit">監査ログ</a></li>
+<li><a href="#jobs">定期処理</a></li>
+<li><a href="#tests">テスト仕様</a></li>
+<li><a href="#ops">運用・障害対応</a></li>
+<li><a href="#params">設定パラメータ</a></li>
+<li><a href="#open">未確定事項</a></li>
+</ol>
+</nav>
+
+<h2 id="arch">1. システム構成</h2>
+<div class="arch">
+  <div class="box"><strong>利用者</strong>営業担当<br>部・支店管理者<br>営業本部<br>関係部門</div>
+  <div class="arr">→</div>
+  <div class="box"><strong>中核業務</strong>AppSuite<br>案件・計画・顧客・行動・予測</div>
+  <div class="arr">↔</div>
+  <div class="box"><strong>周辺基盤</strong>desknet's NEO<br>OneDrive<br>DirectCloud<br>Lightblue（補助）</div>
+</div>
+
+<div class="schema">[営業担当 / 管理者]
+        │
+        ▼
+[desknet's NEO / AppSuite]
+  ├─ 営業案件台帳
+  ├─ 年間受注計画
+  ├─ 行動・次回アクション
+  ├─ 受注予測スナップショット
+  └─ マスター
+        │
+        ├── 通知・予定・案件会議 ──> desknet's NEO
+        ├── 作業版文書 ──────────> OneDrive
+        ├── 確定正本文書 ────────> DirectCloud
+        └── 補助要約/検索 ───────> Lightblue（任意）</div>
+
+<h2 id="components">2. コンポーネント責務</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>コンポーネント</th><th>責務</th><th>保持しないもの</th></tr></thead>
+<tbody>
+<tr><td>AppSuite</td><td>営業案件・計画・確度・金額・粗利・次回行動・集計・参照リンク</td><td>確定契約書等のファイル本体</td></tr>
+<tr><td>desknet's NEO</td><td>通知、訪問予定、案件会議、ユーザーへの業務導線</td><td>正本文書本体</td></tr>
+<tr><td>OneDrive</td><td>提案資料・面談メモ等の共同編集中ファイル</td><td>承認後正本としての唯一保管</td></tr>
+<tr><td>DirectCloud</td><td>確定見積・契約書・受注計画等の正本</td><td>営業案件の構造化台帳</td></tr>
+<tr><td>Lightblue</td><td>要約・検索等の補助</td><td>受注可否、確度、金額等の自動確定</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="apps">3. AppSuiteアプリ構成</h2>
+<p><span class="badge b-design">設計具体化</span> AppSuite内を以下の論理アプリに分割する。実際にはライセンス・運用性を踏まえ、統合フォーム化してもよい。</p>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>アプリID</th><th>名称</th><th>主目的</th><th>主キー</th></tr></thead>
+<tbody>
+<tr><td>APP-01</td><td>営業案件台帳</td><td>案件の正規化された基本・予測情報</td><td>案件コード</td></tr>
+<tr><td>APP-02</td><td>年間受注計画</td><td>年度・組織・区分別の計画値</td><td>計画ID</td></tr>
+<tr><td>APP-03</td><td>営業行動・次回アクション</td><td>訪問、提案、照会、会議、期限、結果</td><td>行動ID</td></tr>
+<tr><td>APP-04</td><td>予測スナップショット</td><td>月次等の締め時点の見込保存</td><td>スナップショットID</td></tr>
+<tr><td>APP-05</td><td>顧客・発注者マスター</td><td>表記揺れ抑制・案件紐付け</td><td>顧客/発注者コード</td></tr>
+<tr><td>APP-06</td><td>営業共通マスター</td><td>地域、工種、段階、確度、失注理由、通知条件</td><td>マスター種別＋コード</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="model">4. データモデル</h2>
+<div class="schema">Customer/Issuer 1 ─── N Opportunity
+Organization     1 ─── N Opportunity
+User             1 ─── N Opportunity
+Opportunity      1 ─── N Action
+Opportunity      1 ─── N DocumentLink
+Opportunity      1 ─── N AuditRecord
+Opportunity      1 ─── N ForecastSnapshotDetail
+SalesPlan        1 ─── N (Organization / Period / Category)</div>
+<p>外部システムとの連携は、原則として<strong>案件コード</strong>を共通参照キーとする。顧客・発注者・組織等は可能な限りコード化し、表示名変更による参照切れを避ける。</p>
+
+<h2 id="dict">5. 主要データ項目定義</h2>
+<h3>5.1 営業案件台帳</h3>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>項目ID</th><th>項目名</th><th>型/形式</th><th>必須</th><th>入力/算出</th><th>仕様</th></tr></thead>
+<tbody>
+<tr><td>OPP-001</td><td>案件コード</td><td>文字列</td><td>○</td><td>自動/管理採番</td><td>全体で一意。採番規則は設定化。</td></tr>
+<tr><td>OPP-002</td><td>案件名</td><td>文字列</td><td>○</td><td>入力</td><td>正式名称または営業管理名称。</td></tr>
+<tr><td>OPP-003</td><td>顧客コード</td><td>参照</td><td>△</td><td>マスター</td><td>民間顧客等。対象案件に応じて利用。</td></tr>
+<tr><td>OPP-004</td><td>発注者コード</td><td>参照</td><td>△</td><td>マスター</td><td>官公庁等。対象案件に応じて利用。</td></tr>
+<tr><td>OPP-005</td><td>官民区分</td><td>選択</td><td>○</td><td>マスター</td><td>公共/民間等。正式区分は要確定。</td></tr>
+<tr><td>OPP-006</td><td>地域</td><td>参照/選択</td><td>○</td><td>マスター</td><td>支店集計・重複候補に利用。</td></tr>
+<tr><td>OPP-007</td><td>工種</td><td>参照/選択</td><td>○</td><td>マスター</td><td>社内工種体系に合わせる。</td></tr>
+<tr><td>OPP-008</td><td>主管組織</td><td>参照</td><td>○</td><td>組織</td><td>部・支店等の案件責任組織。</td></tr>
+<tr><td>OPP-009</td><td>主担当</td><td>ユーザー</td><td>○</td><td>選択</td><td>案件の一次責任者。</td></tr>
+<tr><td>OPP-010</td><td>共同担当</td><td>複数ユーザー</td><td>任意</td><td>選択</td><td>共同担当がある場合。</td></tr>
+<tr><td>OPP-011</td><td>案件段階</td><td>選択</td><td>○</td><td>マスター</td><td>段階マスターの有効値のみ。</td></tr>
+<tr><td>OPP-012</td><td>確度コード</td><td>選択</td><td>○</td><td>マスター</td><td>定義・重みは確度マスターで管理。</td></tr>
+<tr><td>OPP-013</td><td>予定受注額</td><td>通貨/数値</td><td>○</td><td>入力</td><td>0以上。単位は円を基本とし表示単位を設定。</td></tr>
+<tr><td>OPP-014</td><td>予定粗利額</td><td>通貨/数値</td><td>△</td><td>入力/算出</td><td>社内管理方法により粗利率とのどちらを主入力にするか要確定。</td></tr>
+<tr><td>OPP-015</td><td>予定粗利率</td><td>百分率</td><td>△</td><td>算出/入力</td><td>予定粗利額÷予定受注額×100。</td></tr>
+<tr><td>OPP-016</td><td>受注予定日/時期</td><td>日付または年月</td><td>○</td><td>入力</td><td>予測期間集計に利用。</td></tr>
+<tr><td>OPP-017</td><td>次回行動</td><td>文字列</td><td>○</td><td>入力</td><td>具体的な次の行動。</td></tr>
+<tr><td>OPP-018</td><td>次回行動期限</td><td>日付</td><td>○</td><td>入力</td><td>期限超過監視に利用。</td></tr>
+<tr><td>OPP-019</td><td>最終更新日時</td><td>日時</td><td>○</td><td>自動</td><td>停滞判定基準。</td></tr>
+<tr><td>OPP-020</td><td>確度変更理由</td><td>複数行文字列</td><td>条件必須</td><td>入力</td><td>確度変更時に必須。</td></tr>
+<tr><td>OPP-021</td><td>段階変更理由</td><td>複数行文字列</td><td>条件必須</td><td>入力</td><td>特定遷移で必須化可能。</td></tr>
+<tr><td>OPP-022</td><td>失注理由</td><td>選択＋自由記述</td><td>条件必須</td><td>マスター/入力</td><td>失注状態で必須。</td></tr>
+<tr><td>OPP-023</td><td>OneDrive作業リンク</td><td>URL</td><td>任意</td><td>入力</td><td>共同編集フォルダ/ファイル。</td></tr>
+<tr><td>OPP-024</td><td>DirectCloud正本リンク</td><td>URL</td><td>任意</td><td>入力</td><td>確定見積・契約書・受注計画等。</td></tr>
+<tr><td>OPP-025</td><td>機密区分</td><td>選択</td><td>○</td><td>マスター</td><td>閲覧範囲制御に利用。正式区分は要確定。</td></tr>
+<tr><td>OPP-026</td><td>案件状態</td><td>選択</td><td>○</td><td>マスター</td><td>進行中/受注/失注/保留/取消等の管理。正式値は要確定。</td></tr>
+</tbody>
+</table></div>
+
+<h3>5.2 年間受注計画</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>項目</th><th>仕様</th></tr></thead>
+<tbody>
+<tr><td>計画ID</td><td>一意識別子。</td></tr>
+<tr><td>年度</td><td>対象年度。</td></tr>
+<tr><td>組織</td><td>営業本部、部、支店等。</td></tr>
+<tr><td>区分</td><td>官民、地域、工種等。どの軸を必須とするかは要確定。</td></tr>
+<tr><td>目標受注額</td><td>0以上の数値。</td></tr>
+<tr><td>目標粗利額/率</td><td>社内計画方法に合わせる。</td></tr>
+<tr><td>版・承認状態</td><td>計画改定の追跡に利用。</td></tr>
+</tbody>
+</table></div>
+
+<h3>5.3 営業行動</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>項目</th><th>仕様</th></tr></thead>
+<tbody>
+<tr><td>行動ID</td><td>一意識別子。</td></tr>
+<tr><td>案件コード</td><td>必須。営業案件台帳参照。</td></tr>
+<tr><td>行動種別</td><td>訪問、電話、提案、照会、会議等をマスター化。</td></tr>
+<tr><td>予定日時/実施日時</td><td>予定と実績を分離。</td></tr>
+<tr><td>担当</td><td>実施責任者。</td></tr>
+<tr><td>結果</td><td>実施内容・要点。必要に応じOneDrive面談メモ参照。</td></tr>
+<tr><td>次回行動/期限</td><td>案件台帳へ反映可能。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="state">6. 案件状態・確度設計</h2>
+<h3>6.1 案件段階</h3>
+<p>資料に例示された「引合い、発注見通し、公告予定、提案中、入札準備、応札、結果待ち」を初期候補とする。ただし、正式な順序・遷移可否は営業本部承認後にマスター確定する。</p>
+<div class="flow">
+  <div class="step">引合い</div><div class="arrow">→</div>
+  <div class="step">発注見通し</div><div class="arrow">→</div>
+  <div class="step">公告予定</div><div class="arrow">→</div>
+  <div class="step">提案/準備</div><div class="arrow">→</div>
+  <div class="step">応札</div><div class="arrow">→</div>
+  <div class="step">結果待ち</div>
+</div>
+<p>実際の案件は全ての段階を通るとは限らないため、状態遷移表をマスター/設定として運用し、無理な一本道に固定しない。</p>
+
+<h3>6.2 確度</h3>
+<p><span class="badge b-tbd">要確定</span> 資料では「確度」の管理と変更理由保持が要求されるが、ランク・割合・判定基準は未定義である。本設計では「確度コード」「表示名」「予測重み」「定義」「有効/無効」をマスター化する。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>項目</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td>確度コード</td><td>一意コード。例示値は本書では固定しない。</td></tr>
+<tr><td>表示名</td><td>社内で用いる名称。</td></tr>
+<tr><td>予測重み</td><td>0～1または0～100%。加重見込を利用する場合のみ設定。</td></tr>
+<tr><td>定義</td><td>その確度と判断する条件。</td></tr>
+<tr><td>変更理由必須</td><td>原則ON。変更時に理由を取得。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="calc">7. 集計・計算仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>ID</th><th>指標</th><th>計算</th><th>備考</th></tr></thead>
+<tbody>
+<tr><td>CALC-01</td><td>予定粗利率</td><td>予定粗利額 ÷ 予定受注額 × 100</td><td>予定受注額が0の場合は未算出。</td></tr>
+<tr><td>CALC-02</td><td>単純積上げ見込</td><td>対象案件の予定受注額合計</td><td>組織・期間・地域・工種・段階・確度で絞込。</td></tr>
+<tr><td>CALC-03</td><td>加重見込</td><td>Σ（予定受注額 × 確度重み）</td><td><span class="badge b-design">設計案</span> 確度重み採用時のみ。</td></tr>
+<tr><td>CALC-04</td><td>計画差異</td><td>見込額 − 目標受注額</td><td>計画と同一粒度で比較。</td></tr>
+<tr><td>CALC-05</td><td>計画達成見込率</td><td>見込額 ÷ 目標受注額 × 100</td><td>目標0の場合は未算出。</td></tr>
+<tr><td>CALC-06</td><td>未更新日数</td><td>基準日 − 最終更新日</td><td>停滞判定に利用。</td></tr>
+<tr><td>CALC-07</td><td>次回行動遅延</td><td>次回行動期限 &lt; 基準日 かつ未完了</td><td>通知対象。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="screen">8. 画面仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>画面ID</th><th>画面</th><th>主な表示/操作</th><th>主利用者</th></tr></thead>
+<tbody>
+<tr><td>SCR-01</td><td>営業ダッシュボード</td><td>計画、単純/加重見込、差異、案件数、停滞件数、期限超過、確度別・段階別集計</td><td>管理者・営業本部</td></tr>
+<tr><td>SCR-02</td><td>案件一覧</td><td>検索、フィルタ、並べ替え、担当・段階・確度・受注時期等の一覧</td><td>全利用者</td></tr>
+<tr><td>SCR-03</td><td>案件詳細</td><td>案件基本情報、金額、粗利、次回行動、文書リンク、会議/行動、変更履歴</td><td>全利用者</td></tr>
+<tr><td>SCR-04</td><td>案件登録・編集</td><td>必須入力、マスター選択、確度/段階変更理由、保存</td><td>営業担当</td></tr>
+<tr><td>SCR-05</td><td>年間受注計画</td><td>年度・組織別計画の登録/改定/参照</td><td>営業本部・管理者</td></tr>
+<tr><td>SCR-06</td><td>案件健全性</td><td>未更新、停滞、次回行動なし、期限超過、重複候補</td><td>営業担当・管理者</td></tr>
+<tr><td>SCR-07</td><td>予測比較</td><td>月次スナップショット、前月差、確度変化、計画差異推移</td><td>営業本部</td></tr>
+<tr><td>SCR-08</td><td>マスター管理</td><td>段階、確度、地域、工種、通知しきい値等</td><td>限定管理者</td></tr>
+</tbody>
+</table></div>
+
+<h3>8.1 営業ダッシュボード表示順</h3>
+<ol>
+<li>対象年度・対象組織・対象期間フィルタ</li>
+<li>計画額 / 見込額 / 差異 / 達成見込率</li>
+<li>段階別・確度別パイプライン</li>
+<li>受注予定月別集計</li>
+<li>停滞・期限超過・重複候補アラート</li>
+<li>直近案件会議・訪問予定</li>
+</ol>
+
+<h2 id="validation">9. 入力検証</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>ID</th><th>対象</th><th>検証</th><th>エラー時</th></tr></thead>
+<tbody>
+<tr><td>VAL-01</td><td>予定受注額</td><td>数値かつ0以上</td><td>保存不可</td></tr>
+<tr><td>VAL-02</td><td>予定粗利額/率</td><td>計算整合性を確認</td><td>警告または保存不可。運用ルールで確定</td></tr>
+<tr><td>VAL-03</td><td>次回行動期限</td><td>進行中案件で未入力を検知</td><td>保存警告/必須化</td></tr>
+<tr><td>VAL-04</td><td>確度変更</td><td>変更理由が空でない</td><td>保存不可</td></tr>
+<tr><td>VAL-05</td><td>失注</td><td>失注理由が入力済み</td><td>状態変更不可</td></tr>
+<tr><td>VAL-06</td><td>URL</td><td>OneDrive/DirectCloudリンク形式</td><td>警告</td></tr>
+<tr><td>VAL-07</td><td>顧客/発注者</td><td>マスター存在</td><td>新規マスター申請または選択し直し</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="duplicate">10. 重複・停滞検知</h2>
+<h3>10.1 重複候補</h3>
+<p>重複判定は「削除」ではなく<strong>候補提示</strong>とする。誤統合を防ぐため、最終判断は営業管理者または案件責任者が行う。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>照合要素</th><th>扱い</th></tr></thead>
+<tbody>
+<tr><td>発注者/顧客コード</td><td>一致時に候補スコア加点。</td></tr>
+<tr><td>案件名</td><td>正規化後の完全/部分類似を比較。</td></tr>
+<tr><td>地域</td><td>同一/近接区分を比較。</td></tr>
+<tr><td>工種</td><td>同一工種を比較。</td></tr>
+<tr><td>受注予定時期</td><td>近い時期の場合に候補とする。</td></tr>
+</tbody>
+</table></div>
+<p><span class="badge b-tbd">要確定</span> 重複スコアやしきい値は、実データで誤検知率を確認して決定する。</p>
+
+<h3>10.2 停滞・未更新</h3>
+<ul>
+<li><code>未更新日数 &gt; STALE_DAYS</code> の進行中案件を未更新候補とする。</li>
+<li>次回行動が空の進行中案件を要確認とする。</li>
+<li>次回行動期限が過ぎ、完了記録がない案件を期限超過とする。</li>
+<li>同じ案件段階に一定期間滞留した場合は段階停滞候補とする。</li>
+</ul>
+
+<h2 id="notify">11. 通知仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>通知ID</th><th>トリガー</th><th>通知先</th><th>内容</th><th>媒体</th></tr></thead>
+<tbody>
+<tr><td>NTF-01</td><td>次回行動期限前</td><td>主担当/共同担当</td><td>案件名、期限、次回行動</td><td>desknet's NEO</td></tr>
+<tr><td>NTF-02</td><td>次回行動期限超過</td><td>主担当、必要に応じ管理者</td><td>超過日数、案件リンク</td><td>desknet's NEO</td></tr>
+<tr><td>NTF-03</td><td>長期未更新</td><td>主担当、管理者</td><td>最終更新日、案件段階、確度</td><td>desknet's NEO</td></tr>
+<tr><td>NTF-04</td><td>案件会議予定</td><td>参加者</td><td>会議日時、案件、事前資料リンク</td><td>desknet's NEO</td></tr>
+<tr><td>NTF-05</td><td>重複候補</td><td>案件担当/管理者</td><td>候補案件一覧、比較項目</td><td>desknet's NEOまたはAppSuite表示</td></tr>
+<tr><td>NTF-06</td><td>重要な確度/金額変更</td><td>管理者</td><td>変更前後、理由、変更者</td><td>要否を運用決定</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="docs">12. 文書管理仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>文書状態</th><th>保存先</th><th>例</th><th>案件側保持情報</th></tr></thead>
+<tbody>
+<tr><td>作業中</td><td>OneDrive</td><td>提案書草稿、面談メモ、案件会議前資料</td><td>URL、文書種別、説明</td></tr>
+<tr><td>確定/正本</td><td>DirectCloud</td><td>確定見積、契約書、受注計画</td><td>URL、文書種別、確定日、版</td></tr>
+</tbody>
+</table></div>
+<ul>
+<li>AppSuiteに同一ファイルを重複保存せず、正本所在を明確にする。</li>
+<li>OneDriveからDirectCloudへ確定移管する業務手順は別途運用手順書で定義する。</li>
+<li>案件終了時も参照リンクと正本所在を維持する。</li>
+</ul>
+
+<h2 id="if">13. 外部連携仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>IF-ID</th><th>相手</th><th>キー</th><th>データ</th><th>頻度</th><th>異常時</th></tr></thead>
+<tbody>
+<tr><td>IF-01</td><td>desknet's NEO</td><td>案件コード/ユーザー</td><td>通知、予定、会議参照</td><td>随時/定期</td><td>通知失敗を記録し再送/手動確認</td></tr>
+<tr><td>IF-02</td><td>OneDrive</td><td>URL</td><td>作業版文書参照</td><td>随時</td><td>リンク切れを利用者が修正できる</td></tr>
+<tr><td>IF-03</td><td>DirectCloud</td><td>URL</td><td>正本文書参照</td><td>随時</td><td>リンク切れ/権限不足を確認</td></tr>
+<tr><td>IF-04</td><td>入札情報系</td><td>候補ID→案件コード</td><td>発注者、案件名、地域、工種、金額、期限等</td><td>連携実装時</td><td>候補キューへ退避し人確認</td></tr>
+<tr><td>IF-05</td><td>案件会議管理</td><td>案件コード</td><td>決定事項、担当、期限、変更根拠</td><td>会議確定時</td><td>未反映を一覧化</td></tr>
+<tr><td>IF-06</td><td>経営コックピット</td><td>組織/期間</td><td>計画、見込、差異、案件数</td><td>日次/週次等</td><td>前回正常値を保持し更新失敗を表示</td></tr>
+</tbody>
+</table></div>
+<div class="warning">AppSuite/desknet's NEOの具体的なAPIエンドポイントや認証方式は、アップロード資料では定義されていないため本書では固定しない。実環境の利用可能機能を確認してIF方式を確定する。</div>
+
+<h2 id="auth">14. 権限・セキュリティ</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>操作</th><th>営業担当</th><th>所属管理者</th><th>営業本部</th><th>関係部門</th><th>IT管理</th></tr></thead>
+<tbody>
+<tr><td>担当案件閲覧</td><td>○</td><td>○</td><td>○</td><td>許可案件のみ</td><td>技術運用上必要時</td></tr>
+<tr><td>担当案件更新</td><td>○</td><td>○</td><td>権限に応じ○</td><td>原則×</td><td>×</td></tr>
+<tr><td>組織集計閲覧</td><td>自組織範囲</td><td>自組織</td><td>全社</td><td>許可範囲</td><td>技術確認のみ</td></tr>
+<tr><td>計画登録</td><td>×</td><td>△</td><td>○</td><td>×</td><td>×</td></tr>
+<tr><td>マスター変更</td><td>×</td><td>×</td><td>業務マスター○</td><td>×</td><td>技術設定○</td></tr>
+<tr><td>大量出力</td><td>制限</td><td>△</td><td>○</td><td>制限</td><td>必要時</td></tr>
+</tbody>
+</table></div>
+<p>機密案件は通常の組織権限に加えて案件単位の閲覧制御を適用できるようにする。異動・退職時は所属と権限を見直す。</p>
+
+<h2 id="audit">15. 監査ログ</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>監査対象</th><th>記録内容</th></tr></thead>
+<tbody>
+<tr><td>確度変更</td><td>案件コード、変更前、変更後、理由、更新者、日時</td></tr>
+<tr><td>案件段階変更</td><td>変更前、変更後、理由、更新者、日時</td></tr>
+<tr><td>金額/粗利変更</td><td>変更前後、更新者、日時、必要に応じ理由</td></tr>
+<tr><td>担当/主管組織変更</td><td>変更前後、移管理由、更新者、日時</td></tr>
+<tr><td>受注/失注/取消</td><td>状態、理由、確定者、日時</td></tr>
+<tr><td>マスター変更</td><td>対象マスター、変更前後、管理者、日時</td></tr>
+<tr><td>CSV等出力</td><td>出力者、日時、対象範囲（取得可能な範囲）</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="jobs">16. 定期処理</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>JOB-ID</th><th>処理</th><th>推奨頻度</th><th>処理概要</th></tr></thead>
+<tbody>
+<tr><td>JOB-01</td><td>未更新/停滞抽出</td><td>日次</td><td>STALE_DAYS、STAGE_STALE_DAYS等により候補抽出。</td></tr>
+<tr><td>JOB-02</td><td>次回行動期限監視</td><td>日次</td><td>期限前・期限超過を抽出し通知。</td></tr>
+<tr><td>JOB-03</td><td>重複候補抽出</td><td>日次/週次</td><td>新規/更新案件を既存案件と比較。</td></tr>
+<tr><td>JOB-04</td><td>集計更新</td><td>日次/都度</td><td>部・支店・全社、期間別の見込値を更新。</td></tr>
+<tr><td>JOB-05</td><td>予測スナップショット</td><td>月次等</td><td>締め日時点の案件見込・計画差異を保存。</td></tr>
+<tr><td>JOB-06</td><td>データ品質レポート</td><td>週次/月次</td><td>欠損、異常値、リンク切れ、未更新等を一覧化。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="tests">17. テスト仕様</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>TEST-ID</th><th>観点</th><th>代表テスト</th><th>期待結果</th></tr></thead>
+<tbody>
+<tr><td>T-01</td><td>案件登録</td><td>必須項目を入力して保存</td><td>一意案件コードで保存され一覧に表示。</td></tr>
+<tr><td>T-02</td><td>必須検証</td><td>確度変更理由を空で保存</td><td>保存不可または明確な入力要求。</td></tr>
+<tr><td>T-03</td><td>集計</td><td>複数組織・複数確度の案件を登録</td><td>指定軸で正しい合計。</td></tr>
+<tr><td>T-04</td><td>計画差異</td><td>計画100、見込80</td><td>差異-20として表示。</td></tr>
+<tr><td>T-05</td><td>権限</td><td>他組織の機密案件へアクセス</td><td>権限なし利用者には非表示/拒否。</td></tr>
+<tr><td>T-06</td><td>停滞</td><td>しきい値超過の未更新案件</td><td>健全性一覧と通知対象に出る。</td></tr>
+<tr><td>T-07</td><td>重複</td><td>同一発注者・類似案件名を登録</td><td>重複候補として提示、勝手に統合しない。</td></tr>
+<tr><td>T-08</td><td>文書</td><td>OneDrive/DirectCloudリンクを登録</td><td>権限のある利用者が参照可能。</td></tr>
+<tr><td>T-09</td><td>監査</td><td>確度・金額・担当を変更</td><td>変更前後、更新者、日時、理由を追跡。</td></tr>
+<tr><td>T-10</td><td>スナップショット</td><td>月末保存後に案件金額を変更</td><td>過去月スナップショットは保持される。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="ops">18. 運用・障害対応</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>事象</th><th>一次対応</th><th>復旧/代替</th></tr></thead>
+<tbody>
+<tr><td>AppSuite利用不可</td><td>障害範囲・サービス状況確認</td><td>緊急メモを一時保持し、復旧後に正式登録。二重登録を避ける。</td></tr>
+<tr><td>desknet's NEO通知不達</td><td>通知対象・設定・サービス状態確認</td><td>健全性一覧を手動確認し、必要なら別手段で連絡。</td></tr>
+<tr><td>OneDriveリンク切れ</td><td>所有者・移動・権限を確認</td><td>正しい作業リンクへ更新。</td></tr>
+<tr><td>DirectCloudリンク切れ</td><td>正本所在・権限を確認</td><td>正本管理者がリンクを修正。ファイル複製で代替しない。</td></tr>
+<tr><td>重複誤検知</td><td>別案件として判定</td><td>判定結果を学習用ではなくルール調整材料として記録。</td></tr>
+<tr><td>集計不一致</td><td>対象条件・案件状態・計画版を照合</td><td>元案件データと集計ロジックを再計算。</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="params">19. 設定パラメータ</h2>
+<div class="table-wrap"><table class="wide">
+<thead><tr><th>パラメータ</th><th>用途</th><th>初期値</th><th>管理者</th></tr></thead>
+<tbody>
+<tr><td>STALE_DAYS</td><td>長期未更新判定日数</td><td><span class="badge b-tbd">要確定</span></td><td>営業本部/システム管理</td></tr>
+<tr><td>STAGE_STALE_DAYS</td><td>同一段階停滞日数</td><td><span class="badge b-tbd">要確定</span></td><td>営業本部</td></tr>
+<tr><td>ACTION_REMIND_DAYS</td><td>次回行動の事前通知日数</td><td><span class="badge b-tbd">要確定</span></td><td>営業本部</td></tr>
+<tr><td>DUPLICATE_THRESHOLD</td><td>重複候補判定しきい値</td><td><span class="badge b-tbd">実データ検証後</span></td><td>営業本部/IT・DX</td></tr>
+<tr><td>FORECAST_SNAPSHOT_DAY</td><td>予測スナップショット締め</td><td><span class="badge b-tbd">要確定</span></td><td>営業本部</td></tr>
+<tr><td>FORECAST_WEIGHT_MODE</td><td>確度加重見込の使用有無</td><td><span class="badge b-tbd">要確定</span></td><td>営業本部</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="open">20. 未確定事項</h2>
+<div class="warning">
+<ul>
+<li>第一営業部・第二営業部・各支店営業部の正式な分掌、案件所有・移管条件。</li>
+<li>案件段階マスターの正式値・順序・遷移ルール。</li>
+<li>確度ランク/数値・定義・予測重み・変更承認要否。</li>
+<li>計画粒度、予測締め日、粗利の入力/算出方法。</li>
+<li>通知しきい値、エスカレーション先。</li>
+<li>顧客情報、競合情報、NDA対象情報、監査ログの保存年限。</li>
+<li>AppSuite/desknet's NEO/OneDrive/DirectCloudの実環境で使用できる具体的連携方式。</li>
+<li>経営コックピットとの連携項目・更新頻度。</li>
+</ul>
+</div>
+
+<p class="footer">
+本書はアップロード資料を基礎とした詳細設計ドラフトであり、資料に未記載の値は設定可能な設計案または「要確定」として明示している。
+</p>
+
+</main>
+</body>
+</html>
