@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build outputs
+dist/
+web/dist/
+worker-build/
+deploy/
+src/generated/
+*.tsbuildinfo
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+secrets/
+
+# cloudflare / wrangler
+.wrangler/
+.dev.vars
+worker-configuration.d.ts
+
+# test / coverage
+coverage/
+.tmp/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# local DB files
+*.sqlite3
+*.db
