@@ -42,7 +42,7 @@ GET /api/internal/healthz
 
 現状は手動確認ベース。外部監視（UptimeRobot / Cloudflare Health Checks）導入を推奨:
 
-- **URL**: `https://mirai-sales-pipeline.kensan1969.workers.dev/api/internal/healthz`
+- **URL**: `https://msp.mirai-dx-platform.com/api/internal/healthz`
 - **期待**: HTTP 200 かつ `"ok":true`
 - **通知先**: 開発・運用責任者（メール / Slack）
 

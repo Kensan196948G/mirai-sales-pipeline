@@ -30,7 +30,7 @@
 | `CRON_SECRET` | 日次ジョブ呼び出し | 同上 + GitHub Actions Secret `MSP_CRON_SECRET` | **四半期ごと**。Worker と GitHub の両方を同時更新 |
 | `CLOUDFLARE_API_TOKEN` | デプロイ | `.env`（ローカル）/ GitHub Actions Secret（デプロイ CI 導入時） | 権限見直し時。Workers Scripts: Edit に限定 |
 | `NEON_DATABASE_URL` | CI 統合テスト用（テストブランチ） | GitHub Actions Secret | テストブランチ再作成時 |
-| `MSP_WORKER_URL` | 日次ジョブの宛先 | GitHub Actions Secret | Worker の URL 変更時 |
+| `MSP_WORKER_URL` | 日次ジョブの宛先（本番: `https://msp.mirai-dx-platform.com`） | GitHub Actions Secret | Worker の URL 変更時 |
 
 **秘密候補・値は報告しない**（影響とローテーション方法のみ本ドキュメントに記載）。
 

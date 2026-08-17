@@ -5,7 +5,16 @@
 
 - **技術スタック**: Cloudflare Workers (Hono) / Neon PostgreSQL (HTTP SQL) / React + Vite + TypeScript / node --test / GitHub Actions
 - **基盤方針**: 要件定義書・詳細仕様設計書（v1.0 Draft）に従う。独自開発を最小化し既存基盤（AppSuite / desknet's NEO / OneDrive / DirectCloud）は参照・連携
-- **本番 URL**: https://mirai-sales-pipeline.kensan1969.workers.dev
+
+## 環境と URL
+
+| 環境 | URL | Worker | DB |
+|---|---|---|---|
+| **本番** | https://msp.mirai-dx-platform.com | `mirai-sales-pipeline` | Neon 本番ブランチ |
+| **MVP プロトタイプ** | https://msp-mvp.mirai-dx-platform.com | `mirai-sales-pipeline-mvp` | Neon テストブランチ（`test`） |
+| **開発** | https://mirai-sales-pipeline.kensan1969.workers.dev | `mirai-sales-pipeline` | ローカル/検証用 |
+
+> 本番と MVP は同じバンドル（単一リポジトリ）からデプロイされ、`WORKER_NAME` / `DATABASE_URL` / シークレットを環境ごとに切り替えます（`scripts/deploy.mjs` は環境変数優先）。MVP はプロトタイプ・デモ用のため、本番データには接続しません。
 
 ## 機能概要
 
@@ -65,9 +74,22 @@ npm run build:all     # web ビルド + Worker バンドル生成（worker-build
 
 ```bash
 npm run build:all
-node scripts/deploy.mjs          # Cloudflare REST API で Worker を更新（要 CLOUDFLARE_API_TOKEN）
+node scripts/deploy.mjs          # 本番 Worker を更新（要 CLOUDFLARE_API_TOKEN）
 node scripts/deploy.mjs --secrets # シークレットも .env から設定（初回のみ）
-node scripts/deploy.mjs --crons   # cron トリガーも更新（初回のみ）
+node scripts/deploy.mjs --crons   # cron トリガーも更新（初回のみ・要 Workers Paid）
+```
+
+環境変数で `.env` を上書きして複数環境へデプロイできます（`scripts/deploy.mjs` は環境変数優先）:
+
+```bash
+# MVP プロトタイプへデプロイ（例）
+WORKER_NAME=mirai-sales-pipeline-mvp \
+APP_NAME=mirai-sales-pipeline-mvp \
+DATABASE_URL=postgresql://...@<test-branch>-pooler.../neondb \
+SESSION_SECRET=$(openssl rand -hex 32) \
+CRON_SECRET=$(openssl rand -hex 32) \
+ENVIRONMENT=production \
+node scripts/deploy.mjs --secrets
 ```
 
 または `npx wrangler deploy`（wrangler.toml 参照、要 wrangler 認証）。
@@ -75,7 +97,7 @@ node scripts/deploy.mjs --crons   # cron トリガーも更新（初回のみ）
 デプロイ後の稼働確認:
 
 ```bash
-curl -s https://mirai-sales-pipeline.kensan1969.workers.dev/api/internal/healthz
+curl -s https://msp.mirai-dx-platform.com/api/internal/healthz
 # {"ok":true,"database":"ok","postgres":"PostgreSQL 18.x",...}
 ```
 

@@ -6,18 +6,20 @@
 
 | 項目 | 値 |
 |---|---|
-| 本番 URL | https://mirai-sales-pipeline.kensan1969.workers.dev |
-| Worker | `mirai-sales-pipeline`（Cloudflare アカウント: Kensan1969@gmail.com's Account） |
+| 本番 URL | https://msp.mirai-dx-platform.com（カスタムドメイン） |
+| MVP プロトタイプ URL | https://msp-mvp.mirai-dx-platform.com（Worker: `mirai-sales-pipeline-mvp`、DB: Neon テストブランチ） |
+| 開発 URL | https://mirai-sales-pipeline.kensan1969.workers.dev（本番 Worker の workers.dev） |
+| Worker（本番） | `mirai-sales-pipeline`（Cloudflare アカウント: Kensan1969@gmail.com's Account） |
 | DB | Neon プロジェクト `mirai-sales-pipeline`（プロジェクトID: tiny-cake-63492081, PostgreSQL 18, aws-us-east-1） |
 | リポジトリ | https://github.com/Kensan196948G/mirai-sales-pipeline（private） |
 | CI | GitHub Actions（`.github/workflows/ci.yml`） |
-| 日次ジョブ | Worker cron `30 0 * * *`（09:30 JST）+ GitHub Actions `daily-jobs.yml` の安全網 |
+| 日次ジョブ | GitHub Actions `daily-jobs.yml`（09:30 JST）が本番 `/api/internal/cron` を実行 + ダッシュボード遅延実行の安全網 |
 
 ## 2. 稼働確認（スモークテスト）
 
 ```bash
 # ヘルスチェック（DB 接続含む）
-curl -s https://mirai-sales-pipeline.kensan1969.workers.dev/api/internal/healthz
+curl -s https://msp.mirai-dx-platform.com/api/internal/healthz
 
 # 期待値
 # {"ok":true,"app":"mirai-sales-pipeline","environment":"production","database":"ok","postgres":"PostgreSQL 18.x (…)",...}
@@ -40,7 +42,7 @@ node scripts/deploy.mjs          # Worker 更新（要 CLOUDFLARE_API_TOKEN）
 #   必要時のみ: node scripts/deploy.mjs --secrets / --crons
 
 # 3. スモーク
-curl -s https://mirai-sales-pipeline.kensan1969.workers.dev/api/internal/healthz
+curl -s https://msp.mirai-dx-platform.com/api/internal/healthz
 # 主要機能: ログイン / 案件一覧 / ダッシュボード / CSV 出力 を画面で確認
 ```
 
