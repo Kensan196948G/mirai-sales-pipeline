@@ -22,12 +22,19 @@ const withCrons = args.includes('--crons');
 
 function loadEnv() {
   const envFile = join(root, '.env');
-  const out = { ...process.env };
+  const out = {};
   if (existsSync(envFile)) {
     for (const line of readFileSync(envFile, 'utf8').split('\n')) {
       const m = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
       if (m && m[1] && m[2] !== undefined) out[m[1]] = m[2];
     }
+  }
+  // 環境変数を優先（CI や複数環境デプロイ時に .env を上書き可能）
+  for (const key of Object.keys(out)) {
+    if (process.env[key] !== undefined) out[key] = process.env[key];
+  }
+  for (const key of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'WORKER_NAME', 'APP_NAME', 'DATABASE_URL', 'SESSION_SECRET', 'CRON_SECRET', 'ENVIRONMENT']) {
+    if (process.env[key] !== undefined) out[key] = process.env[key];
   }
   return out;
 }
@@ -36,6 +43,7 @@ const env = loadEnv();
 const ACCOUNT_ID = env.CLOUDFLARE_ACCOUNT_ID;
 const API_TOKEN = env.CLOUDFLARE_API_TOKEN;
 const WORKER_NAME = env.WORKER_NAME ?? 'mirai-sales-pipeline';
+const APP_NAME = env.APP_NAME ?? WORKER_NAME;
 const CF_API = 'https://api.cloudflare.com/client/v4';
 
 if (!ACCOUNT_ID) {
@@ -83,7 +91,7 @@ console.log(`worker.mjs: ${(bundle.length / 1024).toFixed(1)} KB / インライ�
 
 // ---- 2. メタデータ ----
 const bindings = [
-  { type: 'plain_text', name: 'APP_NAME', text: 'mirai-sales-pipeline' },
+  { type: 'plain_text', name: 'APP_NAME', text: APP_NAME },
   { type: 'plain_text', name: 'ENVIRONMENT', text: env.ENVIRONMENT ?? 'production' },
 ];
 const metadata = {

@@ -55,3 +55,4 @@
 | 日付 | 変更内容 |
 |---|---|
 | 2026-08-17 | 初版作成（本番リリース時） |
+| 2026-08-17 | 環境3構成へ変更: 本番 `msp.mirai-dx-platform.com` / MVP `msp-mvp.mirai-dx-platform.com`（Worker `mirai-sales-pipeline-mvp`・テストブランチ DB）/ 開発 `mirai-sales-pipeline.kensan1969.workers.dev`。MSP_WORKER_URL を本番カスタムドメインへ更新 |
