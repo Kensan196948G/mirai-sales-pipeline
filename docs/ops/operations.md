@@ -8,8 +8,10 @@
 
 | # | タスク | 担当 | 手順 | 判定基準 |
 |---|---|---|---|---|
-| D-01 | 日次ジョブ実行確認 | 運用担当 | `/api/admin/job-runs`（admin）で JOB-01〜06 の status を確認 | 全ジョブ ok。error があれば Worker ログで原因特定 |
+| D-01 | 日次ジョブ実行確認 | 運用担当 | `/api/admin/job-runs`（admin）で JOB-01〜06 の status を確認。前日分の実行が無い場合は GitHub Actions の `daily-jobs` ワークフロー状態と Worker の遅延実行（ダッシュボードアクセス）を確認 | 全ジョブ ok。error があれば Worker ログで原因特定 |
 | D-02 | エラー数確認 | 運用担当 | Cloudflare Analytics で 5xx / 429 を確認 | 5xx < 1%。異常があれば RUNBOOK §6 |
+
+> **既知事項（リリース時点）**: 新規リポジトリでは GitHub Actions の schedule ワークフロー登録に遅延が発生することがある（`gh api repos/<owner>/<repo>/actions/workflows` で `daily-jobs` が確認できるまで）。登録完了までの間も、ダッシュボードアクセス時の遅延実行（24h以上未実行なら JOB-01〜06 起動）と手動実行（`gh workflow run daily-jobs.yml`）で日次ジョブは代替される。**リリース後 24 時間以内に `daily-jobs` の登録と動作を確認すること**（確認方法: `gh workflow list --all` → `gh workflow run daily-jobs.yml` → 実行ログで `/api/internal/cron` が 200 を返すこと）。
 
 ### 週次
 
