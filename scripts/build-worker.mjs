@@ -45,7 +45,9 @@ function walk(dir, base) {
 }
 walk(distDir, '');
 // 生成モジュール（JSON.stringify で安全に文字列化）
-const genPath = join(root, 'src', 'generated', 'assets.ts');
+const genDir = join(root, 'src', 'generated');
+mkdirSync(genDir, { recursive: true });
+const genPath = join(genDir, 'assets.ts');
 const lines = [
   '/** 生成ファイル: ビルド時に web/dist の内容をインライン化（build-worker.mjs が生成・再生成） */',
   'export const INLINE_ASSETS: Record<string, { content: string; contentType: string }> = {',
