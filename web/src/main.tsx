@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider, useAuth } from './auth.tsx';
-import { useHashRoute } from './router.tsx';
+import { ROUTE_META, useHashRoute } from './router.tsx';
 import { Layout } from './pages/Layout.tsx';
 import { LoginPage } from './pages/Login.tsx';
 import { DashboardPage } from './pages/Dashboard.tsx';
@@ -14,24 +14,9 @@ import { SnapshotsPage } from './pages/Snapshots.tsx';
 import { AdminPage } from './pages/Admin.tsx';
 import './styles.css';
 
-const ROUTES = [
-  { pattern: /^\/$/, page: DashboardPage },
-  { pattern: /^\/opportunities\/new$/, page: OpportunityFormPage },
-  { pattern: /^\/opportunities\/(?<oppCode>[^/]+)\/edit$/, page: OpportunityFormPage },
-  { pattern: /^\/opportunities\/(?<oppCode>[^/]+)$/, page: OpportunityDetailPage },
-  { pattern: /^\/opportunities$/, page: OpportunitiesPage },
-  { pattern: /^\/plans$/, page: PlansPage },
-  { pattern: /^\/health$/, page: HealthPage },
-  { pattern: /^\/snapshots$/, page: SnapshotsPage },
-  { pattern: /^\/masters$/, page: () => <AdminPage tab="masters" /> },
-  { pattern: /^\/users$/, page: () => <AdminPage tab="users" /> },
-  { pattern: /^\/audit$/, page: () => <AdminPage tab="audit" /> },
-  { pattern: /^\/settings$/, page: () => <AdminPage tab="settings" /> },
-];
-
 function Shell() {
   const { user, loading } = useAuth();
-  const route = useHashRoute(ROUTES);
+  const route = useHashRoute();
 
   if (loading) return <div className="empty">読み込み中…</div>;
 
@@ -39,14 +24,41 @@ function Shell() {
     return <LoginPage />;
   }
 
-  if (!route) {
-    window.location.hash = '#/';
-    return null;
-  }
-  const Page = route.page;
+  const meta = ROUTE_META[route.key] ?? ROUTE_META['/']!;
+  const screen = (() => {
+    switch (route.key) {
+      case '/':
+        return <DashboardPage />;
+      case '/opportunities':
+        return <OpportunitiesPage />;
+      case '/opportunities/detail':
+        return <OpportunityDetailPage code={route.code ?? ''} />;
+      case '/opportunities/new':
+        return <OpportunityFormPage code={undefined} isEdit={false} />;
+      case '/opportunities/edit':
+        return <OpportunityFormPage code={route.code} isEdit={true} />;
+      case '/health':
+        return <HealthPage />;
+      case '/plans':
+        return <PlansPage />;
+      case '/snapshots':
+        return <SnapshotsPage />;
+      case '/masters':
+        return <AdminPage tab="masters" />;
+      case '/users':
+        return <AdminPage tab="users" />;
+      case '/audit':
+        return <AdminPage tab="audit" />;
+      case '/settings':
+        return <AdminPage tab="settings" />;
+      default:
+        return <DashboardPage />;
+    }
+  })();
+
   return (
-    <Layout>
-      <Page params={route.params} />
+    <Layout navKey={meta.nav} crumb={meta.crumb} title={meta.title}>
+      {screen}
     </Layout>
   );
 }

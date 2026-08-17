@@ -1,8 +1,8 @@
-/** 案件健全性（SCR-06）: 未更新・期限超過・次回行動なし・重複候補 */
+/** 案件健全性（新デザイン + /api/health 結線: 未更新・期限超過・未設定・重複） */
 import { useEffect, useState } from 'react';
 import { api } from '../api.ts';
 import { dateJa, dateTimeJa } from '../format.ts';
-import { PageHeader, Empty } from './ui.tsx';
+import { Icon } from '../icons.tsx';
 
 interface HealthData {
   stale: any[];
@@ -23,87 +23,97 @@ export function HealthPage() {
 
   return (
     <div>
-      <PageHeader title={`案件健全性（${total} 件）`} />
-      {total === 0 ? <Empty message="健全です。未更新・期限超過・重複候補はありません" /> : null}
+      <div className="health-grid" style={{ marginBottom: 20 }}>
+        <div className="health-tile warn"><span className="ht-ico"><Icon name="clock" /></span><div className="ht-num num">{data.stale.length}</div><div className="ht-label">長期未更新</div></div>
+        <div className="health-tile danger"><span className="ht-ico"><Icon name="alert" /></span><div className="ht-num num">{data.overdue.length}</div><div className="ht-label">次回行動 期限超過</div></div>
+        <div className="health-tile info"><span className="ht-ico"><Icon name="calendar" /></span><div className="ht-num num">{data.no_action.length}</div><div className="ht-label">次回行動 未設定</div></div>
+        <div className="health-tile warn"><span className="ht-ico"><Icon name="copy" /></span><div className="ht-num num">{data.duplicates.length}</div><div className="ht-label">重複候補</div></div>
+      </div>
 
-      <Section title={`長期未更新（${data.stale.length} 件）`} tone="orange">
-        {data.stale.map((s) => (
-          <tr key={s.id}>
-            <td><a href={`#/opportunities/${s.opp_code}`}>{s.opp_code}</a></td>
-            <td>{s.name}</td>
-            <td>{s.org_name}</td>
-            <td>{s.owner_name}</td>
-            <td>{s.stage_name} / {s.probability_name}</td>
-            <td>{dateTimeJa(s.last_updated_at)}</td>
-            <td className="num">{s.days_since_update} 日</td>
-          </tr>
-        ))}
-      </Section>
+      {total === 0 ? <div className="card"><div className="empty">健全です。未更新・期限超過・重複候補はありません</div></div> : null}
 
-      <Section title={`次回行動 期限超過（${data.overdue.length} 件）`} tone="red">
-        {data.overdue.map((o) => (
-          <tr key={o.id}>
-            <td><a href={`#/opportunities/${o.opp_code}`}>{o.opp_code}</a></td>
-            <td>{o.name}</td>
-            <td>{o.org_name}</td>
-            <td>{o.owner_name}</td>
-            <td className="small">{o.next_action}</td>
-            <td>{dateJa(o.next_action_due)}</td>
-            <td className="num" style={{ color: 'var(--danger)' }}>{o.delay_days} 日超過</td>
-          </tr>
-        ))}
-      </Section>
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+        <div className="card-head" style={{ padding: '18px 22px 12px', margin: 0 }}><h2>長期未更新（{data.stale.length} 件）</h2><span className="meta">最終更新から 14 日以上</span></div>
+        {data.stale.length === 0 ? <div className="empty">該当なし</div> : (
+          <table className="tbl">
+            <thead><tr><th>案件コード</th><th>案件名</th><th>組織</th><th>担当</th><th>段階 / 確度</th><th>最終更新</th><th className="num">未更新日数</th></tr></thead>
+            <tbody>
+              {data.stale.map((s) => (
+                <tr key={s.id}>
+                  <td className="code"><a href={`#/opportunities/${s.opp_code}`}>{s.opp_code}</a></td>
+                  <td><a href={`#/opportunities/${s.opp_code}`}>{s.name}</a></td>
+                  <td>{s.org_name}</td><td>{s.owner_name}</td>
+                  <td>{s.stage_name} / {s.probability_name}</td>
+                  <td className="small">{dateTimeJa(s.last_updated_at)}</td>
+                  <td className="num"><span className="badge orange">{s.days_since_update} 日</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      <Section title={`次回行動 未設定（${data.no_action.length} 件）`} tone="gray">
-        {data.no_action.map((n) => (
-          <tr key={n.id}>
-            <td><a href={`#/opportunities/${n.opp_code}`}>{n.opp_code}</a></td>
-            <td>{n.name}</td>
-            <td>{n.org_name}</td>
-            <td>{n.owner_name}</td>
-            <td>{n.stage_name} / {n.probability_name}</td>
-            <td>{dateTimeJa(n.last_updated_at)}</td>
-          </tr>
-        ))}
-      </Section>
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+        <div className="card-head" style={{ padding: '18px 22px 12px', margin: 0 }}><h2>次回行動 期限超過（{data.overdue.length} 件）</h2></div>
+        {data.overdue.length === 0 ? <div className="empty">該当なし</div> : (
+          <table className="tbl">
+            <thead><tr><th>案件コード</th><th>案件名</th><th>組織</th><th>担当</th><th>次回行動</th><th>期限</th><th className="num">遅延</th></tr></thead>
+            <tbody>
+              {data.overdue.map((o) => (
+                <tr key={o.id}>
+                  <td className="code"><a href={`#/opportunities/${o.opp_code}`}>{o.opp_code}</a></td>
+                  <td><a href={`#/opportunities/${o.opp_code}`}>{o.name}</a></td>
+                  <td>{o.org_name}</td><td>{o.owner_name}</td>
+                  <td className="small">{o.next_action}</td>
+                  <td className="small">{dateJa(o.next_action_due)}</td>
+                  <td className="num" style={{ color: 'var(--danger)' }}><b>{o.delay_days} 日超過</b></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      <Section title={`重複候補（${data.duplicates.length} 件）`} tone="blue">
-        {data.duplicates.map((d) => (
-          <tr key={d.id}>
-            <td><a href={`#/opportunities/${d.a_code}`}>{d.a_code}</a></td>
-            <td>{d.a_name}</td>
-            <td><a href={`#/opportunities/${d.b_code}`}>{d.b_code}</a></td>
-            <td>{d.b_name}</td>
-            <td className="num">{Math.round(Number(d.score) * 100)}%</td>
-            <td className="small">{(d.matched_fields ?? []).join(', ')}</td>
-          </tr>
-        ))}
-      </Section>
-    </div>
-  );
-}
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+        <div className="card-head" style={{ padding: '18px 22px 12px', margin: 0 }}><h2>次回行動 未設定（{data.no_action.length} 件）</h2></div>
+        {data.no_action.length === 0 ? <div className="empty">該当なし</div> : (
+          <table className="tbl">
+            <thead><tr><th>案件コード</th><th>案件名</th><th>組織</th><th>担当</th><th>段階 / 確度</th><th>最終更新</th></tr></thead>
+            <tbody>
+              {data.no_action.map((n) => (
+                <tr key={n.id}>
+                  <td className="code"><a href={`#/opportunities/${n.opp_code}`}>{n.opp_code}</a></td>
+                  <td><a href={`#/opportunities/${n.opp_code}`}>{n.name}</a></td>
+                  <td>{n.org_name}</td><td>{n.owner_name}</td>
+                  <td>{n.stage_name} / {n.probability_name}</td>
+                  <td className="small">{dateTimeJa(n.last_updated_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-function Section({ title, tone, children }: { title: string; tone: string; children: any }) {
-  const rows: any[] = children?.length ? children : [];
-  return (
-    <div className="card">
-      <h2>{title}</h2>
-      {rows.length === 0 ? <Empty message="該当なし" /> : (
-        <table className="grid">
-          <thead>
-            <tr>
-              <th>案件コード</th><th>案件名</th><th>組織</th><th>担当</th>
-              {tone === 'red' ? <th>次回行動</th> : tone === 'blue' ? <th>相手コード</th> : null}
-              {tone === 'blue' ? <th>相手案件名</th> : null}
-              {tone === 'gray' ? <th>段階 / 確度</th> : null}
-              {tone === 'orange' ? <th>段階 / 確度</th> : null}
-              {tone === 'orange' ? <th>最終更新</th> : tone === 'red' ? <th>期限</th> : tone === 'gray' ? <th>最終更新</th> : tone === 'blue' ? <th className="num">スコア</th> : null}
-              {tone === 'orange' ? <th className="num">未更新日数</th> : tone === 'red' ? <th className="num">遅延</th> : tone === 'blue' ? <th>一致要素</th> : null}
-            </tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-      )}
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+        <div className="card-head" style={{ padding: '18px 22px 12px', margin: 0 }}><h2>重複候補（{data.duplicates.length} 件）</h2><span className="meta">判定は管理者が実施</span></div>
+        {data.duplicates.length === 0 ? <div className="empty">該当なし</div> : (
+          <table className="tbl">
+            <thead><tr><th>案件コード</th><th>案件名</th><th>相手コード</th><th>相手案件名</th><th className="num">スコア</th><th>一致要素</th></tr></thead>
+            <tbody>
+              {data.duplicates.map((d) => (
+                <tr key={d.id}>
+                  <td className="code"><a href={`#/opportunities/${d.a_code}`}>{d.a_code}</a></td>
+                  <td><a href={`#/opportunities/${d.a_code}`}>{d.a_name}</a></td>
+                  <td className="code"><a href={`#/opportunities/${d.b_code}`}>{d.b_code}</a></td>
+                  <td><a href={`#/opportunities/${d.b_code}`}>{d.b_name}</a></td>
+                  <td className="num"><b>{Math.round(Number(d.score) * 100)}%</b></td>
+                  <td className="small">{(d.matched_fields ?? []).join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

@@ -12,6 +12,23 @@ export function yenShort(n: number | null | undefined): string {
   return yen(n);
 }
 
+/** 値と単位を分離（新デザインの「60.0 億」表記用） */
+export function yenUnit(n: number | null | undefined): { value: string; unit: string } {
+  if (n == null) return { value: '-', unit: '' };
+  const abs = Math.abs(n);
+  if (abs >= 1_0000_0000) return { value: (n / 1_0000_0000).toFixed(1), unit: '億' };
+  if (abs >= 1_0000) return { value: (n / 1_0000).toFixed(0), unit: '万' };
+  return { value: new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 0 }).format(n), unit: '円' };
+}
+
+/** 受注予定月 YYYYMM → 「9月」表記 */
+export function ymLabel(ym: string | number | null | undefined): string {
+  if (ym == null) return '-';
+  const s = String(ym);
+  const m = Number(s.slice(-2));
+  return Number.isFinite(m) && m >= 1 && m <= 12 ? `${m}月` : s;
+}
+
 export function pct(n: number | null | undefined): string {
   if (n == null) return '-';
   return n.toFixed(1) + '%';
