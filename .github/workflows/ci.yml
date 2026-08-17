@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Frontend build
+        run: npm run build:web
+      - name: Worker build（生成物 src/generated/assets.ts を生成）
+        run: npm run build:worker
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test:unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Integration tests (Neon test branch)
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          cp .env.example .env
+          node -e "
+            const fs=require('fs');
+            let e=fs.readFileSync('.env','utf8');
+            e=e.replace(/^DATABASE_URL=.*$/m, 'DATABASE_URL='+process.env.DATABASE_URL);
+            e=e.replace(/^ENVIRONMENT=.*$/m, 'ENVIRONMENT=test');
+            e=e.replace(/^SESSION_SECRET=.*$/m, 'SESSION_SECRET='+require('crypto').randomBytes(32).toString('hex'));
+            e=e.replace(/^CRON_SECRET=.*$/m, 'CRON_SECRET='+require('crypto').randomBytes(32).toString('hex'));
+            fs.writeFileSync('.env', e);
+          "
+          npm run db:migrate
+          npm run db:seed -- --demo-opportunities
+          npm run test:integration

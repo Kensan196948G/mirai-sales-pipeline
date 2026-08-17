@@ -1,0 +1,29 @@
+# =====================================================================
+# Cloudflare Workers 設定（mirai-sales-pipeline）
+# - ビルドは scripts/build-worker.mjs が worker-build/worker.mjs に単一バンドルを生成
+# - デプロイは scripts/deploy.mjs（Cloudflare REST API 直接）または wrangler deploy で実行
+# - シークレット（DATABASE_URL / SESSION_SECRET / CRON_SECRET）は
+#   Cloudflare Dashboard > Workers > mirai-sales-pipeline > Settings > Variables and Secrets で管理
+#   （wrangler secret put または scripts/deploy.mjs の --secrets オプション）
+# =====================================================================
+
+name = "mirai-sales-pipeline"
+main = "worker-build/worker.mjs"
+compatibility_date = "2026-08-16"
+
+# workers.dev サブドメイン（https://mirai-sales-pipeline.<account-subdomain>.workers.dev）
+workers_dev = true
+
+[vars]
+APP_NAME = "mirai-sales-pipeline"
+ENVIRONMENT = "production"
+
+# 日次ジョブ（JOB-01〜06）の実行:
+# - 本アカウントは Workers 無料プランのため cron トリガー上限（5件/アカウント）に達しており設定不可
+# - 代替: GitHub Actions（.github/workflows/daily-jobs.yml）が毎日 00:30 UTC = 09:30 JST に
+#   POST /api/internal/cron（x-cron-secret 認証）を実行する安全網
+# - さらに dashboard アクセス時の遅延実行（maybeRunDailyJobs: 24h以上未実行なら起動）で多重保険
+# - Workers Paid にアップグレードした場合は [triggers] crons = ["30 0 * * *"] を追加可能
+
+[observability]
+enabled = true

@@ -1,0 +1,21 @@
+name: daily-jobs
+
+on:
+  schedule:
+    # 毎日 00:30 UTC = 09:30 JST に日次ジョブ（JOB-01〜06）を実行
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-daily-jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 日次ジョブ実行（未更新抽出・期限監視・重複スキャン・品質レポート）
+        env:
+          WORKER_URL: ${{ secrets.MSP_WORKER_URL }}
+          CRON_SECRET: ${{ secrets.MSP_CRON_SECRET }}
+        run: |
+          curl -fsS -X POST "${WORKER_URL}/api/internal/cron" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "Content-Type: application/json" -d '{}'
