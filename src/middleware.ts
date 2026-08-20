@@ -51,7 +51,42 @@ export async function sessionAuth(c: Context<AppEnv>, next: Next) {
       c.set('user', null);
     }
   }
+  // MVP 公開デモ用のログイン認証バイパス。
+  // AUTH_BYPASS === 'true' かつ ENVIRONMENT が production 以外のときだけ有効（安全装置）。
+  if (!c.get('user') && c.env.AUTH_BYPASS === 'true' && c.env.ENVIRONMENT !== 'production') {
+    c.set('user', await loadBypassUser(c));
+  }
   await next();
+}
+
+/**
+ * MVP 公開デモ用のバイパスユーザーを取得する。
+ * AUTH_BYPASS_EMAIL 指定時はそのユーザー、未指定時は在籍中の admin を1件採用する。
+ * 該当ユーザーが居なければ null（フェイルクローズ）。
+ */
+async function loadBypassUser(c: Context<AppEnv>): Promise<AuthUser | null> {
+  const email = typeof c.env.AUTH_BYPASS_EMAIL === 'string' ? c.env.AUTH_BYPASS_EMAIL : null;
+  const base = `SELECT u.id, u.email, u.display_name, u.role, u.org_id, o.code AS org_code, o.name AS org_name, o.org_type
+                FROM users u JOIN organizations o ON o.id = u.org_id
+                WHERE u.is_active = true`;
+  try {
+    const row = email
+      ? await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.email = $1`, [email])
+      : await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.role = 'admin' ORDER BY u.created_at LIMIT 1`);
+    if (!row) return null;
+    return {
+      id: row.id,
+      email: row.email,
+      display_name: row.display_name,
+      role: row.role,
+      org_id: row.org_id,
+      org_code: row.org_code,
+      org_name: row.org_name,
+      org_type: row.org_type,
+    } as AuthUser;
+  } catch {
+    return null;
+  }
 }
 
 /** ロール要件（指定ロール以上のみ許可） */
