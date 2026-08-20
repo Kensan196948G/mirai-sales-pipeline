@@ -69,10 +69,21 @@ async function loadBypassUser(c: Context<AppEnv>): Promise<AuthUser | null> {
   const base = `SELECT u.id, u.email, u.display_name, u.role, u.org_id, o.code AS org_code, o.name AS org_name, o.org_type
                 FROM users u JOIN organizations o ON o.id = u.org_id
                 WHERE u.is_active = true`;
+  // Neon (serverless HTTP) は稀に一時エラーを返す。デモ URL がその都度ログイン画面に
+  // 落ちないよう、一時エラーに限り 1 度だけ再試行する。
+  let row: Record<string, unknown> | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      row = email
+        ? await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.email = $1`, [email])
+        : await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.role = 'admin' ORDER BY u.created_at LIMIT 1`);
+      break;
+    } catch {
+      if (attempt === 1) return null; // フェイルクローズ
+      await new Promise((r) => setTimeout(r, 120));
+    }
+  }
   try {
-    const row = email
-      ? await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.email = $1`, [email])
-      : await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.role = 'admin' ORDER BY u.created_at LIMIT 1`);
     if (!row) return null;
     return {
       id: row.id,
