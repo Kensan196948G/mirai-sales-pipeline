@@ -13,11 +13,21 @@ jobs:
     steps:
       - name: 日次ジョブ実行（未更新抽出・期限監視・重複スキャン・品質レポート）
         env:
-          WORKER_URL: ${{ secrets.MSP_WORKER_URL }}
+          # 本番カスタムドメイン（msp.mirai-dx-platform.com）は Cloudflare Access で保護されており、
+          # 未認証の curl は 302 へリダイレクトされジョブが実行されない（サイレント失敗）。
+          # 同一 Worker の workers.dev エンドポイント（Access 非対象・本番と同一 DB）を経由して実行する。
+          WORKER_URL: "https://mirai-sales-pipeline.kensan1969.workers.dev"
           CRON_SECRET: ${{ secrets.MSP_CRON_SECRET }}
         run: |
-          curl -fsS -X POST "${WORKER_URL}/api/internal/cron" \
+          code=$(curl -sS -o /tmp/cron_resp -w "%{http_code}" -X POST "${WORKER_URL}/api/internal/cron" \
             -H "x-cron-secret: ${CRON_SECRET}" \
-            -H "Content-Type: application/json" -d '{}'
+            -H "Content-Type: application/json" -d '{}')
+          echo "HTTP ${code}"
+          cat /tmp/cron_resp
+          # 2xx 以外は失敗扱い（302 等のリダイレクトを成功と誤判定しない）
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "cron 実行に失敗しました (HTTP ${code})"
+            exit 1
+          fi
 
 # メンテナンス: ワークフロー再登録用タッチ
