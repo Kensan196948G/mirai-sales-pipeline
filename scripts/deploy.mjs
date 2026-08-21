@@ -33,7 +33,7 @@ function loadEnv() {
   for (const key of Object.keys(out)) {
     if (process.env[key] !== undefined) out[key] = process.env[key];
   }
-  for (const key of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'WORKER_NAME', 'APP_NAME', 'DATABASE_URL', 'SESSION_SECRET', 'CRON_SECRET', 'ENVIRONMENT']) {
+  for (const key of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'WORKER_NAME', 'APP_NAME', 'DATABASE_URL', 'SESSION_SECRET', 'CRON_SECRET', 'ENVIRONMENT', 'AUTH_BYPASS', 'AUTH_BYPASS_EMAIL']) {
     if (process.env[key] !== undefined) out[key] = process.env[key];
   }
   return out;
@@ -94,10 +94,20 @@ const bindings = [
   { type: 'plain_text', name: 'APP_NAME', text: APP_NAME },
   { type: 'plain_text', name: 'ENVIRONMENT', text: env.ENVIRONMENT ?? 'production' },
 ];
+// MVP 公開デモ用のログイン認証バイパス。AUTH_BYPASS が指定されたときだけ binding を追加する。
+if (env.AUTH_BYPASS !== undefined) {
+  bindings.push({ type: 'plain_text', name: 'AUTH_BYPASS', text: env.AUTH_BYPASS });
+}
+if (env.AUTH_BYPASS_EMAIL !== undefined) {
+  bindings.push({ type: 'plain_text', name: 'AUTH_BYPASS_EMAIL', text: env.AUTH_BYPASS_EMAIL });
+}
 const metadata = {
   main_module: 'worker.mjs',
   compatibility_date: '2026-08-16',
   bindings,
+  // bindings に列挙しない既存シークレット（DATABASE_URL / SESSION_SECRET / CRON_SECRET）を
+  // アップロードで消さないための指定。これが無いと --secrets 無しのデプロイで Worker が壊れる。
+  keep_bindings: ['secret_text'],
 };
 
 if (dryRun) {

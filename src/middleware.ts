@@ -51,7 +51,53 @@ export async function sessionAuth(c: Context<AppEnv>, next: Next) {
       c.set('user', null);
     }
   }
+  // MVP 公開デモ用のログイン認証バイパス。
+  // AUTH_BYPASS === 'true' かつ ENVIRONMENT が production 以外のときだけ有効（安全装置）。
+  if (!c.get('user') && c.env.AUTH_BYPASS === 'true' && c.env.ENVIRONMENT !== 'production') {
+    c.set('user', await loadBypassUser(c));
+  }
   await next();
+}
+
+/**
+ * MVP 公開デモ用のバイパスユーザーを取得する。
+ * AUTH_BYPASS_EMAIL 指定時はそのユーザー、未指定時は在籍中の admin を1件採用する。
+ * 該当ユーザーが居なければ null（フェイルクローズ）。
+ */
+async function loadBypassUser(c: Context<AppEnv>): Promise<AuthUser | null> {
+  const email = typeof c.env.AUTH_BYPASS_EMAIL === 'string' ? c.env.AUTH_BYPASS_EMAIL : null;
+  const base = `SELECT u.id, u.email, u.display_name, u.role, u.org_id, o.code AS org_code, o.name AS org_name, o.org_type
+                FROM users u JOIN organizations o ON o.id = u.org_id
+                WHERE u.is_active = true`;
+  // Neon (serverless HTTP) は稀に一時エラーを返す。デモ URL がその都度ログイン画面に
+  // 落ちないよう、一時エラーに限り 1 度だけ再試行する。
+  let row: Record<string, unknown> | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      row = email
+        ? await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.email = $1`, [email])
+        : await c.get('db').queryOne<Record<string, unknown>>(`${base} AND u.role = 'admin' ORDER BY u.created_at LIMIT 1`);
+      break;
+    } catch {
+      if (attempt === 1) return null; // フェイルクローズ
+      await new Promise((r) => setTimeout(r, 120));
+    }
+  }
+  try {
+    if (!row) return null;
+    return {
+      id: row.id,
+      email: row.email,
+      display_name: row.display_name,
+      role: row.role,
+      org_id: row.org_id,
+      org_code: row.org_code,
+      org_name: row.org_name,
+      org_type: row.org_type,
+    } as AuthUser;
+  } catch {
+    return null;
+  }
 }
 
 /** ロール要件（指定ロール以上のみ許可） */
@@ -59,8 +105,8 @@ export function requireRole(...roles: string[]) {
   return async (c: Context<AppEnv>, next: Next) => {
     const user = c.get('user');
     if (!user) throw Errors.unauthorized();
-    if (roles.length > 0 && !roles.includes(user.role) && !roles.includes('admin')) {
-      // admin は常に許可
+    if (roles.length > 0 && !roles.includes(user.role)) {
+      // admin は常に許可（roles に 'admin' が含まれる場合も含め、非該当ロールを正しく拒否する）
       if (user.role !== 'admin' && !roles.some((r) => (ROLE_RANK[user.role] ?? 0) >= (ROLE_RANK[r] ?? 0))) {
         throw Errors.forbidden();
       }
@@ -145,7 +191,7 @@ export const STATIC_SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self'; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 } as const;
 
 /** セキュリティヘッダー */

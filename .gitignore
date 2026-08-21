@@ -39,3 +39,7 @@ npm-debug.log*
 # local DB files
 *.sqlite3
 *.db
+
+# agent / tool artifacts
+.omo/
+.playwright-mcp/
