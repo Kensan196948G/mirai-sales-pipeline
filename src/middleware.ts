@@ -105,8 +105,8 @@ export function requireRole(...roles: string[]) {
   return async (c: Context<AppEnv>, next: Next) => {
     const user = c.get('user');
     if (!user) throw Errors.unauthorized();
-    if (roles.length > 0 && !roles.includes(user.role) && !roles.includes('admin')) {
-      // admin は常に許可
+    if (roles.length > 0 && !roles.includes(user.role)) {
+      // admin は常に許可（roles に 'admin' が含まれる場合も含め、非該当ロールを正しく拒否する）
       if (user.role !== 'admin' && !roles.some((r) => (ROLE_RANK[user.role] ?? 0) >= (ROLE_RANK[r] ?? 0))) {
         throw Errors.forbidden();
       }
@@ -191,7 +191,7 @@ export const STATIC_SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self'; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 } as const;
 
 /** セキュリティヘッダー */
