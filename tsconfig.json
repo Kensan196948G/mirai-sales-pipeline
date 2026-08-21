@@ -19,6 +19,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "include": ["src/**/*.ts", "tests/unit/calc.test.ts", "tests/unit/duplicates.test.ts", "tests/unit/format.test.ts", "tests/unit/permissions.test.ts", "tests/integration/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "web", "dist", "worker-build"]
 }

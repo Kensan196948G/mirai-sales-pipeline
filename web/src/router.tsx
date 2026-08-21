@@ -23,11 +23,11 @@ export interface Route {
 
 export function parseRoute(path: string): Route {
   const raw = path === '' ? '/' : path;
+  if (raw === '/opportunities/new') return { key: '/opportunities/new', raw, isEdit: false };
   const m = raw.match(/^\/opportunities\/([^/]+)\/edit$/);
   if (m) return { key: '/opportunities/edit', raw, code: m[1], isEdit: true };
   const d = raw.match(/^\/opportunities\/([^/]+)$/);
   if (d) return { key: '/opportunities/detail', raw, code: d[1], isEdit: false };
-  if (raw === '/opportunities/new') return { key: '/opportunities/new', raw, isEdit: false };
   return { key: raw, raw, isEdit: false };
 }
 
