@@ -3,8 +3,8 @@
  * 日次 cron または /api/internal/cron から実行される。冪等・通知は dedup_key で重複防止。
  */
 import { NeonClient } from './db/client.ts';
-import { createNotification, oppLink } from './notify.ts';
-import { scanDuplicatesFor } from './services/dupscan.ts';
+import { oppLink, type NotificationInput } from './notify.ts';
+import { scanDuplicatesBatch, type OppScanInput } from './services/dupscan.ts';
 import { createForecastSnapshot } from './snapshots.ts';
 
 async function runJob(db: NeonClient, jobName: string, fn: () => Promise<Record<string, unknown>>) {
@@ -21,18 +21,54 @@ async function runJob(db: NeonClient, jobName: string, fn: () => Promise<Record<
   }
 }
 
-/** 通知対象: 主担当 + 共同担当 + 所属組織の manager 以上 */
-async function notifyTargets(db: NeonClient, oppId: string, ownerId: string, orgId: string): Promise<string[]> {
+/** 通知対象: 主担当 + 共同担当 + 所属組織の manager 以上（バッチ版: 複数案件の対象を一括取得） */
+async function notifyTargetsBatch(db: NeonClient, oppIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (oppIds.length === 0) return map;
   const r = await db.query(
-    `SELECT DISTINCT u.id FROM users u
-     WHERE u.is_active = true AND (
-       u.id = $1::uuid
-       OR EXISTS (SELECT 1 FROM opportunity_members om WHERE om.opportunity_id=$2::uuid AND om.user_id=u.id)
-       OR (u.org_id = $3::uuid AND u.role IN ('manager','hq','admin'))
-     )`,
-    [ownerId, oppId, orgId],
+    `SELECT o.id AS opp_id, u.id AS user_id
+     FROM opportunities o
+     CROSS JOIN LATERAL (
+       SELECT u.id FROM users u
+       WHERE u.is_active = true AND (
+         u.id = o.owner_id
+         OR EXISTS (SELECT 1 FROM opportunity_members om WHERE om.opportunity_id = o.id AND om.user_id = u.id)
+         OR (u.org_id = o.org_id AND u.role IN ('manager','hq','admin'))
+       )
+     ) u
+     WHERE o.id = ANY($1::uuid[])`,
+    [oppIds],
   );
-  return r.rows.map((row) => String(row.id));
+  for (const row of r.rows) {
+    const oppId = String(row.opp_id);
+    const list = map.get(oppId) ?? [];
+    list.push(String(row.user_id));
+    map.set(oppId, list);
+  }
+  return map;
+}
+
+/** 通知を一括作成（UNNEST + jsonb で単一クエリ投入。dedup_key により冪等。サブリクエスト削減） */
+async function createNotificationsBatch(db: NeonClient, items: { userId: string; ntype: NotificationInput['ntype']; title: string; body?: string; link?: string; entityType?: string; entityId?: string }[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const rows = items.map((n) => ({
+    user_id: n.userId,
+    ntype: n.ntype,
+    title: n.title,
+    body: n.body ?? null,
+    link: n.link ?? null,
+    entity_type: n.entityType ?? null,
+    entity_id: n.entityId ?? null,
+    dedup_key: `${n.userId}:${n.ntype}:${n.entityType ?? ''}:${n.entityId ?? ''}`,
+  }));
+  const r = await db.query(
+    `INSERT INTO notifications (user_id, ntype, title, body, link, entity_type, entity_id, dedup_key)
+     SELECT (e->>'user_id')::uuid, e->>'ntype', e->>'title', e->>'body', e->>'link', e->>'entity_type', e->>'entity_id', e->>'dedup_key'
+     FROM jsonb_array_elements($1::jsonb) AS e
+     ON CONFLICT (dedup_key) DO NOTHING`,
+    [JSON.stringify(rows)],
+  );
+  return r.rowCount;
 }
 
 async function jobStale(db: NeonClient): Promise<Record<string, unknown>> {
@@ -44,19 +80,19 @@ async function jobStale(db: NeonClient): Promise<Record<string, unknown>> {
      WHERE o.status IN ('in_progress','hold')
        AND o.last_updated_at < now() - make_interval(days => (SELECT COALESCE((value->>'value')::int,14) FROM settings WHERE key='STALE_DAYS'))`,
   );
-  let sent = 0;
+  const targets = await notifyTargetsBatch(db, r.rows.map((row) => String(row.id)));
+  const items: Parameters<typeof createNotificationsBatch>[1] = [];
   for (const row of r.rows) {
-    const targets = await notifyTargets(db, String(row.id), String(row.owner_id), String(row.org_id));
-    for (const uid of targets) {
-      const ok = await createNotification(db, {
+    for (const uid of targets.get(String(row.id)) ?? []) {
+      items.push({
         userId: uid, ntype: 'stale',
         title: `【長期未更新】${row.opp_code} ${row.name}`,
         body: `最終更新: ${row.last_updated_at} / 段階: ${row.stage_name} / 確度: ${row.probability_name}`,
         link: oppLink(String(row.opp_code)), entityType: 'opportunity', entityId: String(row.id),
       });
-      if (ok) sent++;
     }
   }
+  const sent = await createNotificationsBatch(db, items);
   return { stale_count: r.rows.length, notifications: sent };
 }
 
@@ -66,19 +102,19 @@ async function jobOverdue(db: NeonClient): Promise<Record<string, unknown>> {
      FROM opportunities o
      WHERE o.status IN ('in_progress','hold') AND o.next_action_due IS NOT NULL AND o.next_action_due < current_date`,
   );
-  let sent = 0;
+  const targets = await notifyTargetsBatch(db, r.rows.map((row) => String(row.id)));
+  const items: Parameters<typeof createNotificationsBatch>[1] = [];
   for (const row of r.rows) {
-    const targets = await notifyTargets(db, String(row.id), String(row.owner_id), String(row.org_id));
-    for (const uid of targets) {
-      const ok = await createNotification(db, {
+    for (const uid of targets.get(String(row.id)) ?? []) {
+      items.push({
         userId: uid, ntype: 'action_overdue',
         title: `【次回行動 期限超過】${row.opp_code} ${row.name}`,
         body: `期限: ${row.next_action_due} / 内容: ${row.next_action ?? ''}`,
         link: oppLink(String(row.opp_code)), entityType: 'opportunity', entityId: String(row.id),
       });
-      if (ok) sent++;
     }
   }
+  const sent = await createNotificationsBatch(db, items);
   return { overdue_count: r.rows.length, notifications: sent };
 }
 
@@ -89,19 +125,19 @@ async function jobRemind(db: NeonClient): Promise<Record<string, unknown>> {
      WHERE o.status IN ('in_progress','hold') AND o.next_action_due IS NOT NULL
        AND o.next_action_due BETWEEN current_date AND current_date + make_interval(days => (SELECT COALESCE((value->>'value')::int,3) FROM settings WHERE key='ACTION_REMIND_DAYS'))`,
   );
-  let sent = 0;
+  const targets = await notifyTargetsBatch(db, r.rows.map((row) => String(row.id)));
+  const items: Parameters<typeof createNotificationsBatch>[1] = [];
   for (const row of r.rows) {
-    const targets = await notifyTargets(db, String(row.id), String(row.owner_id), String(row.org_id));
-    for (const uid of targets) {
-      const ok = await createNotification(db, {
+    for (const uid of targets.get(String(row.id)) ?? []) {
+      items.push({
         userId: uid, ntype: 'action_remind',
         title: `【次回行動 期限前】${row.opp_code} ${row.name}`,
         body: `期限: ${row.next_action_due} / 内容: ${row.next_action ?? ''}`,
         link: oppLink(String(row.opp_code)), entityType: 'opportunity', entityId: String(row.id),
       });
-      if (ok) sent++;
     }
   }
+  const sent = await createNotificationsBatch(db, items);
   return { remind_count: r.rows.length, notifications: sent };
 }
 
@@ -112,20 +148,9 @@ async function jobDuplicates(db: NeonClient): Promise<Record<string, unknown>> {
      FROM opportunities o LEFT JOIN customers c ON c.id=o.customer_id
      WHERE o.status IN ('in_progress','hold') AND o.last_updated_at > now() - interval '30 days'`,
   );
-  let candidates = 0;
-  for (const row of r.rows) {
-    const res = await scanDuplicatesFor(db, {
-      id: String(row.id), opp_code: String(row.opp_code), name: String(row.name),
-      customer_id: row.customer_id ? String(row.customer_id) : null,
-      customer_code: row.customer_code ? String(row.customer_code) : null,
-      customer_name: row.customer_name ? String(row.customer_name) : null,
-      region_id: row.region_id ? String(row.region_id) : null,
-      work_type_id: row.work_type_id ? String(row.work_type_id) : null,
-      expected_order_date: row.expected_order_date ? String(row.expected_order_date) : null,
-    });
-    candidates += res.candidates;
-  }
-  return { scanned: r.rows.length, candidates };
+  const targets = r.rows as unknown as OppScanInput[];
+  const res = await scanDuplicatesBatch(db, targets);
+  return { scanned: targets.length, candidates: res.candidates };
 }
 
 async function jobSnapshot(db: NeonClient): Promise<Record<string, unknown>> {

@@ -64,3 +64,62 @@ export async function scanDuplicatesFor(db: NeonClient, target: OppScanInput): P
   }
   return { candidates };
 }
+
+/**
+ * 複数案件を相互比較して重複候補を一括記録する（日次ジョブ JOB-03 用）。
+ * スコアリングはメモリ内で完結し、INSERT は UNNEST + jsonb の単一クエリで実行する。
+ * これにより Cloudflare Workers のサブリクエスト上限（無料プラン 50/呼び出し）を超えない。
+ */
+export async function scanDuplicatesBatch(db: NeonClient, targets: OppScanInput[]): Promise<{ candidates: number }> {
+  if (targets.length < 2) return { candidates: 0 };
+  const thresholdRow = await db.queryOne<{ value: unknown }>(`SELECT value FROM settings WHERE key='DUPLICATE_THRESHOLD'`);
+  const threshold = Number((thresholdRow?.value as any)?.value ?? 0.6);
+
+  const rows: { opp_a: string; opp_b: string; score: number; matched: string[] }[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < targets.length; i++) {
+    for (let j = i + 1; j < targets.length; j++) {
+      const a = targets[i]!;
+      const b = targets[j]!;
+      if (!a.id || !b.id) continue;
+      const { score, matched } = scoreDuplicates(
+        {
+          customerCode: a.customer_code ?? null,
+          customerName: a.customer_name ?? null,
+          name: a.name,
+          regionId: a.region_id,
+          workTypeId: a.work_type_id,
+          expectedOrderDate: a.expected_order_date,
+        },
+        {
+          customerCode: b.customer_code ?? null,
+          customerName: b.customer_name ?? null,
+          name: b.name,
+          regionId: b.region_id,
+          workTypeId: b.work_type_id,
+          expectedOrderDate: b.expected_order_date,
+        },
+      );
+      if (!isDuplicateCandidate({ score, matched }, threshold)) continue;
+      if (!a.id || !b.id) continue;
+      const sorted = [a.id, b.id].sort();
+      const x = sorted[0]!;
+      const y = sorted[1]!;
+      const key = `${x}:${y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ opp_a: x, opp_b: y, score, matched });
+    }
+  }
+  if (rows.length > 0) {
+    await db.query(
+      `INSERT INTO duplicate_candidates (opp_a_id, opp_b_id, score, matched_fields)
+       SELECT (e->>'opp_a')::uuid, (e->>'opp_b')::uuid, (e->>'score')::float8, COALESCE(e->'matched', '[]'::jsonb)
+       FROM jsonb_array_elements($1::jsonb) AS e
+       ON CONFLICT (opp_a_id, opp_b_id) DO UPDATE SET score=EXCLUDED.score, matched_fields=EXCLUDED.matched_fields,
+         status=CASE WHEN duplicate_candidates.status='merged' THEN 'merged' ELSE 'pending' END`,
+      [JSON.stringify(rows)],
+    );
+  }
+  return { candidates: rows.length };
+}
