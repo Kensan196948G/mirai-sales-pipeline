@@ -114,7 +114,9 @@ curl -s https://msp.mirai-dx-platform.com/api/internal/healthz
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare アカウント ID |
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API トークン（Workers Scripts: Edit 権限。Git 管理外） |
 | `WORKER_NAME` | Worker 名（既定: mirai-sales-pipeline） |
-| `ENVIRONMENT` | 環境名（production / test / development） |
+| `ENVIRONMENT` | 環境名（production / test / development / mvp） |
+| `AUTH_BYPASS` | MVP 公開デモ用のログイン認証バイパス（`'true'` で有効。**production では無効化**される安全装置） |
+| `AUTH_BYPASS_EMAIL` | バイパス時に成りすますユーザーの email（未指定なら在籍中の admin） |
 | `SEED_DEMO_PASSWORD` | シード実行時のデモユーザー初期パスワード（本番では必須） |
 
 本番の `DATABASE_URL` / `SESSION_SECRET` / `CRON_SECRET` は Cloudflare Worker Secrets（`.env` は Git 管理外、コミット禁止）。
@@ -139,6 +141,17 @@ curl -s https://msp.mirai-dx-platform.com/api/internal/healthz
 - [docs/ops/backup.md](docs/ops/backup.md) — Neon バックアップ（PITR）・復元手順
 - [docs/ops/security.md](docs/ops/security.md) — セキュリティ設計・Secrets 管理・ローテーション
 - [docs/ops/operations.md](docs/ops/operations.md) — 日次〜四半期の運用台帳
+
+## 既知の残存リスク（2026-08-21 現在）
+
+| リスク | 深刻度 | 現状・対応 |
+|---|---|---|
+| ブランチ保護未設定 | Medium | GitHub 無料プラン制限により main への PR 必須チェックが未強制。運用ルール（AGENTS.md §5）で main 直接 push 禁止を順守 |
+| Workers 無料プランの制限 | Medium | cron トリガー上限（5件/アカウント）のため日次ジョブは GitHub Actions 経由。サブリクエスト上限（50/呼び出し）はジョブのバッチ化で対応済み |
+| PBKDF2 イテレーション 60,000 回 | Medium | OWASP 推奨（600,000 回）の 1/10。パスワード再ハッシュ化を伴うため別途マイグレーションが必要 |
+| Cloudflare Access Service Token 未設定 | Low | 本番カスタムドメインは Access 保護。日次ジョブは workers.dev エンドポイント（同一 Worker・Access 非対象）経由で代替 |
+| desknet's NEO / OneDrive / DirectCloud 実連携 | Low | 要件・設計書の「環境確認後に確定」事項。現在はリンク管理のみ（FR-12〜15 の連携部分は未実装） |
+| 本番ログの Workers Observability | Low | 無料プランではログ取得が限定的。エラー率は healthz / cron / スモークで代替確認 |
 
 ## ライセンス
 
