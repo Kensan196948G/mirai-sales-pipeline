@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.ts';
 import type { Dashboard } from '../types.ts';
-import { yenUnit, yenShort, dateJa } from '../format.ts';
+import { yenUnit, yenShort, dateJa, pct } from '../format.ts';
 import { Icon } from '../icons.tsx';
 
 export function DashboardPage() {
@@ -88,7 +88,7 @@ export function DashboardPage() {
         {stat('単純積上げ見込', '', simple.value, simple.unit, `${data.forecast.count} 件`)}
         {stat('加重見込（確度考慮）', 'green', weighted.value, weighted.unit, '確度重みを掛けた見込')}
         {stat('計画差異', 'red', variance.value, variance.unit, '加重見込 − 計画', 'danger')}
-        {stat('計画達成見込率', 'teal', data.forecast.achievement_rate == null ? '-' : data.forecast.achievement_rate.toFixed(1), '%', '見込 ÷ 計画')}
+        {stat('計画達成見込率', 'teal', pct(data.forecast.achievement_rate), '%', '見込 ÷ 計画')}
       </div>
 
       <div className="health-grid">
